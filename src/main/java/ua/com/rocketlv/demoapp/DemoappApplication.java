@@ -3,6 +3,7 @@ package ua.com.rocketlv.demoapp;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import ua.com.rocketlv.demoapp.domain.Role;
@@ -13,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @SpringBootApplication
-
 public class DemoappApplication {
 
 	public static void main(String[] args) {

@@ -1,9 +1,5 @@
 package ua.com.rocketlv.demoapp.api;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.JWTVerifier;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -61,44 +57,44 @@ public class UserResource {
         ));
     }
 
-    @PostMapping("/refresh/token")
-    public void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        try {
-            String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-            String token = header.substring("Bearer ".length());
-            log.info("used token {}", token);
-            Algorithm alg = Algorithm.HMAC256("secret".getBytes());
-            JWTVerifier verifier = JWT.require(alg).build();
-            DecodedJWT decoded = verifier.verify(token);
-            String username = decoded.getSubject();
-            decoded.getClaims().keySet().forEach(calm->log.info((calm.intern())));
-            User user = userService.getUser(username);
-
-            String access_token = JWT.create().withSubject(user.getUsername())
-                    .withExpiresAt(new Date(System.currentTimeMillis() + 1000 * 60))
-                    .withIssuer(request.getRequestURL().toString())
-                    .withClaim("roles", user.getRoles().stream().map(val->val.getName().toString()).collect(Collectors.toList()))
-                    .sign(alg);
-            String refresh_token = JWT.create().withSubject(user.getUsername())
-                    .withExpiresAt(new Date(System.currentTimeMillis() * 30 *60 *1000))
-                    .withIssuer(request.getRequestURL().toString())
-                    .sign(alg);
-            Map<String, String> tokens = new HashMap<>();
-            tokens.put("access_token", access_token);
-            tokens.put("refresh_token", refresh_token);
-            response.setContentType(APPLICATION_JSON_VALUE);
-            ObjectMapper om = new ObjectMapper();
-            om.writeValue(response.getOutputStream(),tokens);
-        } catch (Exception e) {
-            log.error("DemoApp rise Exception {}", e.getMessage());
-            response.setHeader("error", e.getMessage());
-            response.setContentType(APPLICATION_JSON_VALUE);
-            Map<String, String> errorMp = new HashMap<>();
-            errorMp.put("error", e.getMessage());
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.writeValue(response.getOutputStream(), errorMp);
-        }
-    }
+//    @PostMapping("/refresh/token")
+//    public void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
+//        try {
+//            String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+//            String token = header.substring("Bearer ".length());
+//            log.info("used token {}", token);
+//            Algorithm alg = Algorithm.HMAC256("secret".getBytes());
+//            JWTVerifier verifier = JWT.require(alg).build();
+//            DecodedJWT decoded = verifier.verify(token);
+//            String username = decoded.getSubject();
+//            decoded.getClaims().keySet().forEach(calm->log.info((calm.intern())));
+//            User user = userService.getUser(username);
+//
+//            String access_token = JWT.create().withSubject(user.getUsername())
+//                    .withExpiresAt(new Date(System.currentTimeMillis() + 1000 * 60))
+//                    .withIssuer(request.getRequestURL().toString())
+//                    .withClaim("roles", user.getRoles().stream().map(val->val.getName().toString()).collect(Collectors.toList()))
+//                    .sign(alg);
+//            String refresh_token = JWT.create().withSubject(user.getUsername())
+//                    .withExpiresAt(new Date(System.currentTimeMillis() * 30 *60 *1000))
+//                    .withIssuer(request.getRequestURL().toString())
+//                    .sign(alg);
+//            Map<String, String> tokens = new HashMap<>();
+//            tokens.put("access_token", access_token);
+//            tokens.put("refresh_token", refresh_token);
+//            response.setContentType(APPLICATION_JSON_VALUE);
+//            ObjectMapper om = new ObjectMapper();
+//            om.writeValue(response.getOutputStream(),tokens);
+//        } catch (Exception e) {
+//            log.error("DemoApp rise Exception {}", e.getMessage());
+//            response.setHeader("error", e.getMessage());
+//            response.setContentType(APPLICATION_JSON_VALUE);
+//            Map<String, String> errorMp = new HashMap<>();
+//            errorMp.put("error", e.getMessage());
+//            ObjectMapper mapper = new ObjectMapper();
+//            mapper.writeValue(response.getOutputStream(), errorMp);
+//        }
+//    }
 
 
     @Data

@@ -1,15 +1,16 @@
 package ua.com.rocketlv.demoapp.filter;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.JWTVerifier;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.interfaces.DecodedJWT;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.servlet.FilterChain;
@@ -18,11 +19,12 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.*;
-
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 @Slf4j
+@RequiredArgsConstructor
 public class CustomAuthorizationFilter extends OncePerRequestFilter {
+    private final JwtDecoder decoder;
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         log.info("{}", request.getServletPath());
@@ -34,14 +36,13 @@ public class CustomAuthorizationFilter extends OncePerRequestFilter {
                 String header = request.getHeader(HttpHeaders.AUTHORIZATION);
                 String token = header.substring("Bearer ".length());
                 log.info("used token {}", token);
-                Algorithm alg = Algorithm.HMAC256("secret".getBytes());
-                JWTVerifier verifier = JWT.require(alg).build();
-                DecodedJWT decoded = verifier.verify(token);
+                Jwt decoded = decoder.decode(token);
+
                 String username = decoded.getSubject();
                 decoded.getClaims().keySet().forEach(calm->log.info((calm.intern())));
-                String[] roles = decoded.getClaim("roles").asArray(String.class);
+                List<String> roles = decoded.getClaimAsStringList("roles");
                 Collection<SimpleGrantedAuthority> ath = new ArrayList<>();
-                Arrays.stream(roles).forEach(role -> {
+                roles.forEach(role -> {
                     ath.add(new SimpleGrantedAuthority(role));
                 });
                 UsernamePasswordAuthenticationToken authtoken = UsernamePasswordAuthenticationToken.authenticated(username, null, ath);

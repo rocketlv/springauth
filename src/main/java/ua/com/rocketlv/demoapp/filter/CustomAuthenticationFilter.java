@@ -1,17 +1,16 @@
 package ua.com.rocketlv.demoapp.filter;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import ua.com.rocketlv.demoapp.service.MyUserPrincipal;
 
@@ -20,7 +19,9 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -28,14 +29,14 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @Slf4j
 @RequiredArgsConstructor
 public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
-private final AuthenticationManager authenticationManager;
-
+    private final AuthenticationManager authenticationManager;
+    private final JwtEncoder encoder;
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
         String username = request.getParameter("username");
         String password = request.getParameter("password");
-        log.info("Username is {} and password is {}",username,password);
+        log.info("Username is {} and password is {}", username, password);
         UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(username, password);
 
         return authenticationManager.authenticate(token);
@@ -43,22 +44,26 @@ private final AuthenticationManager authenticationManager;
 
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication auth) throws IOException, ServletException {
-        MyUserPrincipal user= (ua.com.rocketlv.demoapp.service.MyUserPrincipal) auth.getPrincipal();
-        Algorithm alg = Algorithm.HMAC256("secret".getBytes());
-        String access_token = JWT.create().withSubject(user.getUsername())
-                .withExpiresAt(new Date(System.currentTimeMillis() + 1000 * 600))
-                .withIssuer(request.getRequestURL().toString())
-                .withClaim("roles", user.getAuthorities().stream().map(val->val.getAuthority().toString()).collect(Collectors.toList()))
-                .sign(alg);
-        String refresh_token = JWT.create().withSubject(user.getUsername())
-                .withExpiresAt(new Date(System.currentTimeMillis() * 30 *60 *1000))
-                .withIssuer(request.getRequestURL().toString())
-                .sign(alg);
+        MyUserPrincipal user = (ua.com.rocketlv.demoapp.service.MyUserPrincipal) auth.getPrincipal();
+
+        JwtClaimsSet access = JwtClaimsSet.builder()
+                .issuer(request.getRequestURL().toString())
+                .expiresAt((new Date(System.currentTimeMillis() + 1000 * 600)).toInstant())
+                .subject(user.getUsername())
+                .claim("scope", user.getAuthorities().stream().map(val -> val.getAuthority().toString()).collect(Collectors.joining(" ")))
+                .build();
+        JwtClaimsSet refresh = JwtClaimsSet.builder()
+                .issuer(request.getRequestURL().toString())
+                .expiresAt((new Date(System.currentTimeMillis() + 1000 * 600)).toInstant())
+                .subject(user.getUsername())
+                .claim("scope", user.getAuthorities().stream().map(val -> val.getAuthority().toString()).collect(Collectors.joining(" ")))
+                .build();
+
         Map<String, String> tokens = new HashMap<>();
-        tokens.put("access_token", access_token);
-        tokens.put("refresh_token", refresh_token);
+        tokens.put("access_token", encoder.encode(JwtEncoderParameters.from(access)).getTokenValue());
+        tokens.put("refresh_token", encoder.encode(JwtEncoderParameters.from(refresh)).getTokenValue());
         response.setContentType(APPLICATION_JSON_VALUE);
         ObjectMapper om = new ObjectMapper();
-        om.writeValue(response.getOutputStream(),tokens);
+        om.writeValue(response.getOutputStream(), tokens);
     }
 }
